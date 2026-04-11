@@ -1641,16 +1641,42 @@
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app-screen').style.display = 'flex';
       document.getElementById('app-screen').style.flexDirection = 'column';
+
+      // Siempre ocultar todos los tabs primero
+      ['conteo','pistoleo','admin','about'].forEach(t => {
+        const el = document.getElementById('tab-'+t);
+        if(el) el.style.display = 'none';
+      });
+      // Siempre ocultar elementos admin primero
+      document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+      // Resetear pestañas activas
+      document.querySelectorAll('.ntab').forEach(t => t.classList.remove('active'));
+
       const ini = CU.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
       const av = document.getElementById('hav'); av.textContent = ini; av.className = 'uav ' + (CU.role === 'admin' ? 'av-admin' : 'av-op');
       document.getElementById('hun').textContent = CU.nombre;
       const rb = document.getElementById('hrb'); rb.textContent = CU.role === 'admin' ? 'ADMIN' : 'OPERARIO'; rb.className = 'rbadge ' + (CU.role === 'admin' ? 'rb-admin' : 'rb-op');
+
+      // Mostrar elementos admin solo si es admin
       if (CU.role === 'admin') document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-      else document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+
       const addForm = document.getElementById('add-user-form');
       if (addForm) addForm.style.display = CU.role === 'admin' ? 'flex' : 'none';
-      if (CU.role === 'operario' && CU.bodega !== 'Todas') { document.getElementById('pub').value = CU.bodega; document.getElementById('pub').readOnly = true; document.getElementById('pub').style.opacity = '0.6'; document.getElementById('pub').style.cursor = 'not-allowed'; document.getElementById('pst').value = 'Disponible'; document.getElementById('pst').disabled = true; document.getElementById('pst').style.opacity = '0.6'; }
-      loadData(); renderAudit();
+
+      if (CU.role === 'operario' && CU.bodega !== 'Todas') {
+        document.getElementById('pub').value = CU.bodega;
+        document.getElementById('pub').readOnly = true;
+        document.getElementById('pub').style.opacity = '0.6';
+        document.getElementById('pub').style.cursor = 'not-allowed';
+        document.getElementById('pst').value = 'Disponible';
+        document.getElementById('pst').disabled = true;
+        document.getElementById('pst').style.opacity = '0.6';
+      }
+
+      // Siempre ir a Conteo al iniciar sesión
+      const conteoTab = document.querySelector('.ntab');
+      goTab('conteo', conteoTab);
+      loadData();
     }
     const sess = sessionStorage.getItem('bia_s');
     if (sess) { CU = JSON.parse(sess); startApp(); }
