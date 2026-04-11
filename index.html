@@ -1623,7 +1623,7 @@
     let CU = null;
     function login() {
       const u = document.getElementById('lu').value.trim(), p = document.getElementById('lp').value;
-      const found = getUsers().find(x => x.user === u && x.pass === p);
+      const found = getUsers().find(x => x.user.toLowerCase() === u.toLowerCase() && x.pass === p);
       if (!found) { document.getElementById('lerr').classList.add('show'); return; }
       if (found.active === false) { document.getElementById('lerr').textContent = 'Tu cuenta está desactivada. Contacta al administrador.'; document.getElementById('lerr').classList.add('show'); return; }
       document.getElementById('lerr').classList.remove('show');
