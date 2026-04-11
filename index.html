@@ -1983,10 +1983,8 @@ Pregunta: ${msg}`
       }
       // ─── PWA ───
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/Inventari-bia/sw.js')
-            .then(() => console.log('SW registrado'))
-            .catch(e => console.log('SW error:', e));
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(reg => reg.unregister());
         });
       }
       // ─── TOAST ───
