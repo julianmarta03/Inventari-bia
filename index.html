@@ -1863,11 +1863,12 @@
         <div class="uname">${u.nombre} <span class="urole ${u.role === 'admin' ? 'ur-admin' : 'ur-op'}">${u.role}</span></div>
         <div class="ubodega">${u.user} · ${u.bodega}</div>
         ${isAdmin ? `
-        <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+        <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">
           <span style="font-size:11px;color:var(--t3);font-family:var(--mono)">Pass:</span>
           <span id="pass-${i}" style="font-size:11px;font-family:var(--mono);color:var(--t2)">••••••••</span>
           <button onclick="toggleShowPass(${i},'${u.pass}')" style="font-size:10px;padding:1px 6px;border:1px solid var(--b2);border-radius:4px;background:transparent;color:var(--t3);cursor:pointer">Ver</button>
-          <button onclick="editPass(${i})" style="font-size:10px;padding:1px 6px;border:1px solid var(--b2);border-radius:4px;background:transparent;color:var(--t3);cursor:pointer">Cambiar</button>
+          <button onclick="editPass(${i})" style="font-size:10px;padding:1px 6px;border:1px solid var(--b2);border-radius:4px;background:transparent;color:var(--t3);cursor:pointer">Cambiar pass</button>
+          <button onclick="editUsername(${i})" style="font-size:10px;padding:1px 6px;border:1px solid var(--b2);border-radius:4px;background:transparent;color:var(--t3);cursor:pointer">Cambiar usuario</button>
         </div>` : ''}
       </div>
       ${u.user !== 'admin' && isAdmin ? `
@@ -1881,7 +1882,6 @@
     </div>`;
       }).join('');
     }
-
     function toggleShowPass(i, pass) {
       const el = document.getElementById('pass-' + i);
       const btn = el.nextElementSibling;
@@ -1901,9 +1901,19 @@
       const nuevaPass = prompt(`Nueva contraseña para ${users[i].nombre}:`);
       if (!nuevaPass || !nuevaPass.trim()) { toast('Contraseña no cambiada', 'e'); return; }
       users[i].pass = nuevaPass.trim();
-      saveUsers(users);
-      renderUsers();
+      saveUsers(users); renderUsers();
       toast(`Contraseña de ${users[i].nombre} actualizada`, 's');
+    }
+
+    function editUsername(i) {
+      const users = getUsers();
+      const nuevoUser = prompt(`Nuevo nombre de usuario para ${users[i].nombre}:\nActual: ${users[i].user}`);
+      if (!nuevoUser || !nuevoUser.trim()) { toast('Usuario no cambiado', 'e'); return; }
+      const existe = users.find((u, idx) => idx !== i && u.user.toLowerCase() === nuevoUser.trim().toLowerCase());
+      if (existe) { toast('Ese nombre de usuario ya existe', 'e'); return; }
+      users[i].user = nuevoUser.trim();
+      saveUsers(users); renderUsers();
+      toast(`Usuario cambiado a: ${nuevoUser.trim()}`, 's');
     }
     function changeRole(i, newRole) {
       const users = getUsers();
