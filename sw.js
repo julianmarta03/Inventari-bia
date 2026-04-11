@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inventario-bia-v1';
+const CACHE_NAME = 'inventario-bia-v2';
 const FILES = [
   '/Inventari-bia/',
   '/Inventari-bia/index.html',
