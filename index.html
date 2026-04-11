@@ -1470,7 +1470,7 @@
           <div class="acard">
             <div class="actitle">Usuarios del sistema</div>
             <div id="usrlist"></div>
-            <div class="addform">
+            <div class="addform" id="add-user-form">
               <div
                 style="font-size:10px;color:var(--t3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em">
                 Agregar usuario</div>
@@ -1639,6 +1639,8 @@
       document.getElementById('hun').textContent = CU.nombre;
       const rb = document.getElementById('hrb'); rb.textContent = CU.role === 'admin' ? 'ADMIN' : 'OPERARIO'; rb.className = 'rbadge ' + (CU.role === 'admin' ? 'rb-admin' : 'rb-op');
       if (CU.role === 'admin') document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+      const addForm = document.getElementById('add-user-form');
+      if (addForm) addForm.style.display = CU.role === 'admin' ? 'flex' : 'none';
       if (CU.role === 'operario' && CU.bodega !== 'Todas') { document.getElementById('pub').value = CU.bodega; document.getElementById('pub').readOnly = true; document.getElementById('pub').style.opacity = '0.6'; document.getElementById('pub').style.cursor = 'not-allowed'; document.getElementById('pst').value = 'Disponible'; document.getElementById('pst').disabled = true; document.getElementById('pst').style.opacity = '0.6'; }
       loadData(); renderAudit();
     }
@@ -1851,6 +1853,7 @@
     // ─── ADMIN ───
     function renderUsers() {
       const users = getUsers();
+      const isAdmin = CU?.role === 'admin';
       document.getElementById('usrlist').innerHTML = users.map((u, i) => {
         const ini = u.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
         const isActive = u.active !== false;
@@ -1859,13 +1862,48 @@
       <div style="flex:1">
         <div class="uname">${u.nombre} <span class="urole ${u.role === 'admin' ? 'ur-admin' : 'ur-op'}">${u.role}</span></div>
         <div class="ubodega">${u.user} · ${u.bodega}</div>
+        ${isAdmin ? `
+        <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+          <span style="font-size:11px;color:var(--t3);font-family:var(--mono)">Pass:</span>
+          <span id="pass-${i}" style="font-size:11px;font-family:var(--mono);color:var(--t2)">••••••••</span>
+          <button onclick="toggleShowPass(${i},'${u.pass}')" style="font-size:10px;padding:1px 6px;border:1px solid var(--b2);border-radius:4px;background:transparent;color:var(--t3);cursor:pointer">Ver</button>
+          <button onclick="editPass(${i})" style="font-size:10px;padding:1px 6px;border:1px solid var(--b2);border-radius:4px;background:transparent;color:var(--t3);cursor:pointer">Cambiar</button>
+        </div>` : ''}
       </div>
-      ${u.user !== 'admin' ? `
+      ${u.user !== 'admin' && isAdmin ? `
+        <select onchange="changeRole(${i},this.value)" style="font-size:11px;padding:2px 6px;border:1px solid var(--b2);border-radius:var(--r6);background:var(--s2);color:var(--t1);cursor:pointer;margin-right:4px">
+          <option value="operario" ${u.role === 'operario' ? 'selected' : ''}>Operario</option>
+          <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+        </select>
         <button class="delbtn" style="margin-right:4px;border-color:${isActive ? 'var(--accent)' : 'var(--b2)'};color:${isActive ? 'var(--accent)' : 'var(--t3)'}" onclick="toggleUser(${i})">${isActive ? 'Activo' : 'Inactivo'}</button>
         <button class="delbtn" onclick="delUser(${i})">Eliminar</button>
-      `: ''}
+      ` : ''}
     </div>`;
       }).join('');
+    }
+
+    function toggleShowPass(i, pass) {
+      const el = document.getElementById('pass-' + i);
+      const btn = el.nextElementSibling;
+      if (el.textContent === '••••••••') {
+        el.textContent = pass;
+        el.style.color = 'var(--accent)';
+        btn.textContent = 'Ocultar';
+      } else {
+        el.textContent = '••••••••';
+        el.style.color = 'var(--t2)';
+        btn.textContent = 'Ver';
+      }
+    }
+
+    function editPass(i) {
+      const users = getUsers();
+      const nuevaPass = prompt(`Nueva contraseña para ${users[i].nombre}:`);
+      if (!nuevaPass || !nuevaPass.trim()) { toast('Contraseña no cambiada', 'e'); return; }
+      users[i].pass = nuevaPass.trim();
+      saveUsers(users);
+      renderUsers();
+      toast(`Contraseña de ${users[i].nombre} actualizada`, 's');
     }
     function changeRole(i, newRole) {
       const users = getUsers();
@@ -1975,7 +2013,7 @@ Pregunta: ${msg}`
         const json = await res.json();
         document.getElementById(typingId)?.remove();
         addChatMsg(json.choices[0].message.content, 'ia');
-      } catch(e) {
+      } catch (e) {
         document.getElementById(typingId)?.remove();
         addChatMsg('No pude conectarme. Intenta de nuevo.', 'error');
       }
