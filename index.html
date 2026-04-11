@@ -1698,6 +1698,8 @@
       const conteoTab = document.querySelector('.ntab');
       goTab('conteo', conteoTab);
       loadData();
+      // Precargar Metabase en background
+      setTimeout(() => loadMBCache(), 2000);
     }
     const sess = sessionStorage.getItem('bia_s');
     if (sess) { CU = JSON.parse(sess); startApp(); }
@@ -1801,20 +1803,48 @@
     }
 
     // ─── PISTOLEO ───
-    // ─── METABASE ───
+    // ─── METABASE PAGINADO ───
     async function loadMBCache(){
       if(mbCache) return mbCache;
       try {
-        const res = await fetch(MB_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({parameters:[]})});
-        const json = await res.json();
-        const cols = json.data.cols.map(c => c.name);
-        mbCache = json.data.rows.map(r => {
-          const obj = {};
-          cols.forEach((c,i) => obj[c] = r[i]);
-          return obj;
-        });
+        mbCache = [];
+        let page = 1;
+        let hasMore = true;
+        const PAGE_SIZE = 2000;
+
+        while(hasMore){
+          const res = await fetch(MB_URL, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({parameters:[], page:{page, items:PAGE_SIZE}})
+          });
+          const json = await res.json();
+          const cols = json.data?.cols?.map(c => c.name) || [];
+          const rows = json.data?.rows || [];
+
+          const pageData = rows.map(r => {
+            const obj = {};
+            cols.forEach((c,i) => obj[c] = r[i]);
+            return obj;
+          });
+
+          mbCache = mbCache.concat(pageData);
+
+          // Si devolvió menos de PAGE_SIZE ya terminamos
+          if(rows.length < PAGE_SIZE){
+            hasMore = false;
+          } else {
+            page++;
+            // Máximo 10 páginas = 20,000 equipos por seguridad
+            if(page > 10) hasMore = false;
+          }
+        }
+        console.log('MB cache cargado:', mbCache.length, 'equipos');
         return mbCache;
-      } catch(e) { console.log('MB error:', e); return []; }
+      } catch(e) {
+        console.log('MB error:', e);
+        return [];
+      }
     }
 
     async function autofill(){
