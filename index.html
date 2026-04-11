@@ -1867,6 +1867,12 @@
     </div>`;
       }).join('');
     }
+    function changeRole(i, newRole) {
+      const users = getUsers();
+      users[i].role = newRole;
+      saveUsers(users); renderUsers(); updateAdmin();
+      toast(`Rol cambiado a ${newRole}`, 's');
+    }
     function toggleUser(i) {
       const users = getUsers();
       users[i].active = users[i].active === false ? true : false;
@@ -1965,35 +1971,51 @@ Pregunta: ${msg}`
           }]
         })
       });
-      const json = await res.json();
-      document.getElementById(typingId)?.remove();
-      addChatMsg(json.choices[0].message.content, 'ia');
-      function addChatMsg(msg, tipo, id) {
-        const cont = document.getElementById('chat-messages');
-        const div = document.createElement('div');
-        if (id) div.id = id;
-        div.style.cssText = 'border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.6;max-width:90%;white-space:pre-wrap;';
-        if (tipo === 'user') { div.style.background = '#1a3a2a'; div.style.color = 'var(--accent)'; div.style.alignSelf = 'flex-end'; }
-        else if (tipo === 'ia') { div.style.background = 'var(--s2)'; div.style.color = 'var(--t1)'; div.style.alignSelf = 'flex-start'; }
-        else if (tipo === 'typing') { div.style.background = 'var(--s2)'; div.style.color = 'var(--t3)'; div.style.alignSelf = 'flex-start'; }
-        else { div.style.background = 'rgba(248,113,113,0.1)'; div.style.color = 'var(--danger)'; div.style.alignSelf = 'flex-start'; }
-        div.textContent = msg;
-        cont.appendChild(div);
-        cont.scrollTop = cont.scrollHeight;
+      try {
+        const json = await res.json();
+        document.getElementById(typingId)?.remove();
+        addChatMsg(json.choices[0].message.content, 'ia');
+      } catch(e) {
+        document.getElementById(typingId)?.remove();
+        addChatMsg('No pude conectarme. Intenta de nuevo.', 'error');
       }
-      // ─── PWA ───
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(regs => {
-          regs.forEach(reg => reg.unregister());
-        });
-      }
-      // ─── TOAST ───
-      function togglePass() {
-        const inp = document.getElementById('lp'), btn = document.getElementById('eye-btn');
-        if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'OCULTAR'; }
-        else { inp.type = 'password'; btn.textContent = 'VER'; }
-      }
-      function toast(msg, type = 's') { const t = document.getElementById('toast'), m = document.getElementById('tmsg'); m.textContent = msg; t.className = `toast show ${type}`; setTimeout(() => t.classList.remove('show'), 3500); }
+      btn.disabled = false;
+    }
+
+    function addChatMsg(msg, tipo, id) {
+      const cont = document.getElementById('chat-messages');
+      const div = document.createElement('div');
+      if (id) div.id = id;
+      div.style.cssText = 'border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.6;max-width:90%;white-space:pre-wrap;';
+      if (tipo === 'user') { div.style.background = '#1a3a2a'; div.style.color = 'var(--accent)'; div.style.alignSelf = 'flex-end'; }
+      else if (tipo === 'ia') { div.style.background = 'var(--s2)'; div.style.color = 'var(--t1)'; div.style.alignSelf = 'flex-start'; }
+      else if (tipo === 'typing') { div.style.background = 'var(--s2)'; div.style.color = 'var(--t3)'; div.style.alignSelf = 'flex-start'; }
+      else { div.style.background = 'rgba(248,113,113,0.1)'; div.style.color = 'var(--danger)'; div.style.alignSelf = 'flex-start'; }
+      div.textContent = msg;
+      cont.appendChild(div);
+      cont.scrollTop = cont.scrollHeight;
+    }
+
+    // ─── PWA ───
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => reg.unregister());
+      });
+    }
+
+    // ─── UTILS ───
+    function togglePass() {
+      const inp = document.getElementById('lp'), btn = document.getElementById('eye-btn');
+      if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'OCULTAR'; }
+      else { inp.type = 'password'; btn.textContent = 'VER'; }
+    }
+
+    function toast(msg, type = 's') {
+      const t = document.getElementById('toast'), m = document.getElementById('tmsg');
+      m.textContent = msg;
+      t.className = `toast show ${type}`;
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
   </script>
 </body>
 
