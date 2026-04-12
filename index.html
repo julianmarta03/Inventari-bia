@@ -1709,6 +1709,7 @@
     const API_URL = 'https://script.google.com/macros/s/AKfycbxAsuh7l6_gn9TFwU-EMsJmExc2TJL1uZ8_WqJhy4kv3CXYR_vFNnNNZk6W9ImgyFQ50A/exec';
     const GV = `https://docs.google.com/spreadsheets/d/${SID}/gviz/tq?tqx=out:json&sheet=Hoja%201&headers=1`;
     const MB_URL = 'https://bia.metabaseapp.com/api/public/card/18922/query';
+    const MB_STATIC = 'https://julianmarta03.github.io/Inventari-bia/mb-data-mini.json';
     let mbCache = null;
     let data = [], sortCol = null, sortDir = 1, activeSF = '', photoB64 = null, camStream = null, lastSync = null;
     let audit = JSON.parse(localStorage.getItem('bia_audit') || '[]');
@@ -1803,46 +1804,40 @@
     }
 
     // ─── PISTOLEO ───
-    // ─── METABASE PAGINADO ───
+    // ─── METABASE ───
     async function loadMBCache(){
       if(mbCache) return mbCache;
       try {
-        mbCache = [];
-        let page = 1;
-        let hasMore = true;
-        const PAGE_SIZE = 2000;
-
-        while(hasMore){
-          const res = await fetch(MB_URL, {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({parameters:[], page:{page, items:PAGE_SIZE}})
-          });
-          const json = await res.json();
-          const cols = json.data?.cols?.map(c => c.name) || [];
-          const rows = json.data?.rows || [];
-
-          const pageData = rows.map(r => {
-            const obj = {};
-            cols.forEach((c,i) => obj[c] = r[i]);
-            return obj;
-          });
-
-          mbCache = mbCache.concat(pageData);
-
-          // Si devolvió menos de PAGE_SIZE ya terminamos
-          if(rows.length < PAGE_SIZE){
-            hasMore = false;
-          } else {
-            page++;
-            // Máximo 10 páginas = 20,000 equipos por seguridad
-            if(page > 10) hasMore = false;
-          }
+        // Primero intenta cargar el archivo estático de GitHub
+        const res = await fetch(MB_STATIC);
+        if(res.ok){
+          mbCache = await res.json();
+          console.log('MB cache cargado desde archivo:', mbCache.length, 'equipos');
+          return mbCache;
         }
-        console.log('MB cache cargado:', mbCache.length, 'equipos');
+      } catch(e) {
+        console.log('Archivo estático no disponible, intentando API...');
+      }
+      // Si falla, intenta la API de Metabase directamente
+      try {
+        mbCache = [];
+        const res = await fetch(MB_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({parameters: []})
+        });
+        const json = await res.json();
+        const cols = json.data?.cols?.map(c => c.name) || [];
+        const rows = json.data?.rows || [];
+        mbCache = rows.map(r => {
+          const obj = {};
+          cols.forEach((c,i) => obj[c] = r[i]);
+          return obj;
+        });
+        console.log('MB cache cargado desde API:', mbCache.length, 'equipos');
         return mbCache;
       } catch(e) {
-        console.log('MB error:', e);
+        console.log('MB no disponible:', e);
         return [];
       }
     }
