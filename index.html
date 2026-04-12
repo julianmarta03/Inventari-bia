@@ -1365,14 +1365,8 @@
             <div class="fg" style="margin-bottom:1rem">
               <label class="flbl">Serial del equipo <span>*</span></label>
               <div style="position:relative;display:flex;gap:8px;align-items:center">
-                <input class="finp" id="ps" type="text" placeholder="Escanea o escribe el serial" list="psl" oninput="autofill()" style="flex:1">
-                <datalist id="psl"></datalist>
-
-                <div id="dup-warn"
-                  style="display:none; font-size:11px; color:var(--warn); margin-top:8px; font-family:var(--mono); padding:6px; background:rgba(251, 191, 36, 0.1); border-radius:var(--r6); border:1px solid rgba(251, 191, 36, 0.2);">
-                  ⚠️ Este equipo ya existe. Al guardar, actualizarás su estado y ubicación.
-                </div>
-                oninput="autofill()" style="flex:1">
+                <input class="finp" id="ps" type="text" placeholder="Escanea o escribe el serial" list="psl"
+                  oninput="autofill()" style="flex:1">
                 <datalist id="psl"></datalist>
                 <button onclick="openScanner()" type="button" title="Escanear código de barras"
                   style="width:42px;height:42px;border:1px solid var(--b2);border-radius:var(--r8);background:var(--s2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s">
@@ -1385,6 +1379,10 @@
                     <line x1="16" y1="8" x2="16" y2="16" />
                   </svg>
                 </button>
+              </div>
+              <div id="dup-warn"
+                style="display:none; font-size:11px; color:var(--warn); margin-top:8px; font-family:var(--mono); padding:6px; background:rgba(251, 191, 36, 0.1); border-radius:var(--r6); border:1px solid rgba(251, 191, 36, 0.2);">
+                ⚠️ Este equipo ya existe. Al guardar, actualizarás su estado y ubicación.
               </div>
               <div id="scanbox"
                 style="display:none;margin-top:8px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r12);overflow:hidden">
@@ -1859,40 +1857,32 @@
     }
 
     async function autofill() {
-      // Reemplaza esta parte dentro de autofill()
-      const found = data.find(r => r.Serial === s);
+      // 1. Capturar el valor exacto del input del serial
+      const s = document.getElementById('ps').value.trim();
+      // Si el campo está vacío, ocultamos la alerta y no hacemos nada más
+      if (!s) {
+        document.getElementById('dup-warn').style.display = 'none';
+        return;
+      }
+      // 2. Buscar el serial en los datos cargados (soporta mayúsculas y minúsculas en las llaves)
+      const found = data.find(r => String(r.Serial) === s || String(r.serial) === s);
       if (found) {
-        // NUEVO: Mostrar alerta visual
+        // 3. Mostrar alerta visual de que ya existe
         document.getElementById('dup-warn').style.display = 'block';
-
-        document.getElementById('pn').value = found.Nombre || '';
+        // 4. Autocompletar el nombre
+        document.getElementById('pn').value = found.Nombre || found.nombre || '';
+        // 5. Autocompletar status y ubicación (si es admin y si aplica)
         if (CU?.role === 'admin') {
-          document.getElementById('pst').value = found.Status || '';
-          if (!document.getElementById('pub').value) document.getElementById('pub').value = found.Ubicacion || '';
+          document.getElementById('pst').value = found.Status || found.estado || '';
+          if (!document.getElementById('pub').value) {
+            document.getElementById('pub').value = found.Ubicacion || found.ubicacion || '';
+          }
         }
-        document.getElementById('pest').value = found.Estanteria || '';
+        document.getElementById('pest').value = found.Estanteria || found.estanteria || '';
       } else {
-        // NUEVO: Ocultar alerta si no existe
+        // Si no existe, ocultamos la alerta
         document.getElementById('dup-warn').style.display = 'none';
       }
-    }
-    async function saveP() {
-      const serial = document.getElementById('ps').value.trim(), nombre = document.getElementById('pn').value.trim(), status = document.getElementById('pst').value, ubic = document.getElementById('pub').value.trim(), est = document.getElementById('pest').value.trim();
-      if (!serial || !status || !ubic) { toast('Completa Serial, Status y Ubicación', 'e'); return; }
-      const btn = document.getElementById('savebtn'); btn.disabled = true; btn.textContent = 'Guardando...'; document.getElementById('saving').classList.add('show');
-      const fecha = new Date().toLocaleString('es-CO'), usuario = CU.nombre;
-      // Enviar a Google Sheets
-      try {
-        fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ Serial: serial, Nombre: nombre, Status: status, Ubicacion: ubic, Estanteria: est, Fecha_pistoleo: fecha, Usuario: usuario }) }).catch(e => console.log('Sheets:', e));
-      } catch (e) { console.log('Error Sheets:', e); }
-      const rec = { Serial: serial, Nombre: nombre, Status: status, Ubicacion: ubic, Estanteria: est, Foto: photoB64 ? '[foto]' : '', Fecha_pistoleo: fecha, Usuario: usuario };
-      const idx = data.findIndex(r => r.Serial === serial); if (idx >= 0) data[idx] = rec; else data.unshift(rec);
-      await new Promise(r => setTimeout(r, 600));
-      btn.disabled = false; btn.textContent = 'Guardar pistoleo'; document.getElementById('saving').classList.remove('show');
-      updateStats(); populateFiltros(); if (CU.role === 'admin') updateAdmin();
-      toast(`Equipo ${serial} registrado correctamente`, 's');
-      clearP();
-      goTab('conteo', document.querySelectorAll('.ntab')[0]);
     }
     async function saveP() {
       const serial = document.getElementById('ps').value.trim();
