@@ -1368,6 +1368,13 @@
                 <input class="finp" id="ps" type="text" placeholder="Escanea o escribe el serial" list="psl"
                   oninput="autofill()" style="flex:1">
                 <datalist id="psl"></datalist>
+
+                <div id="dup-warn"
+                  style="display:none; font-size:11px; color:var(--warn); margin-top:8px; font-family:var(--mono); padding:6px; background:rgba(251, 191, 36, 0.1); border-radius:var(--r6); border:1px solid rgba(251, 191, 36, 0.2);">
+                  ⚠️ Este equipo ya existe. Al guardar, actualizarás su estado y ubicación.
+                </div>
+                oninput="autofill()" style="flex:1">
+                <datalist id="psl"></datalist>
                 <button onclick="openScanner()" type="button" title="Escanear código de barras"
                   style="width:42px;height:42px;border:1px solid var(--b2);border-radius:var(--r8);background:var(--s2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
@@ -1406,22 +1413,32 @@
             </div>
 
             <!-- DATOS DE METABASE -->
-            <div id="mb-panel" style="display:none;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r8);padding:12px;margin-bottom:1rem">
-              <div style="font-size:10px;color:var(--accent);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+            <div id="mb-panel"
+              style="display:none;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r8);padding:12px;margin-bottom:1rem">
+              <div
+                style="font-size:10px;color:var(--accent);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;display:flex;align-items:center;gap:6px">
                 <div style="width:6px;height:6px;border-radius:50%;background:var(--accent)"></div>
                 Datos desde Inventario WMS
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
-                <div><span style="color:var(--t3)">SKU:</span> <span id="mb-sku" style="color:var(--t1);font-family:var(--mono)">—</span></div>
-                <div><span style="color:var(--t3)">Estado WMS:</span> <span id="mb-estado" style="color:var(--t1)">—</span></div>
-                <div><span style="color:var(--t3)">Marca:</span> <span id="mb-marca" style="color:var(--t1)">—</span></div>
-                <div><span style="color:var(--t3)">Código BIA:</span> <span id="mb-bia" style="color:var(--info);font-family:var(--mono)">—</span></div>
-                <div style="grid-column:1/-1"><span style="color:var(--t3)">Ubicación WMS:</span> <span id="mb-ubicacion" style="color:var(--t1)">—</span></div>
-                <div><span style="color:var(--t3)">Venc. Conformidad:</span> <span id="mb-venc1" style="color:var(--warn)">—</span></div>
-                <div><span style="color:var(--t3)">Venc. Calibración:</span> <span id="mb-venc2" style="color:var(--warn)">—</span></div>
+                <div><span style="color:var(--t3)">SKU:</span> <span id="mb-sku"
+                    style="color:var(--t1);font-family:var(--mono)">—</span></div>
+                <div><span style="color:var(--t3)">Estado WMS:</span> <span id="mb-estado"
+                    style="color:var(--t1)">—</span></div>
+                <div><span style="color:var(--t3)">Marca:</span> <span id="mb-marca" style="color:var(--t1)">—</span>
+                </div>
+                <div><span style="color:var(--t3)">Código BIA:</span> <span id="mb-bia"
+                    style="color:var(--info);font-family:var(--mono)">—</span></div>
+                <div style="grid-column:1/-1"><span style="color:var(--t3)">Ubicación WMS:</span> <span
+                    id="mb-ubicacion" style="color:var(--t1)">—</span></div>
+                <div><span style="color:var(--t3)">Venc. Conformidad:</span> <span id="mb-venc1"
+                    style="color:var(--warn)">—</span></div>
+                <div><span style="color:var(--t3)">Venc. Calibración:</span> <span id="mb-venc2"
+                    style="color:var(--warn)">—</span></div>
               </div>
             </div>
-            <div id="mb-loading" style="display:none;font-size:12px;color:var(--t2);font-family:var(--mono);margin-bottom:1rem;display:none;align-items:center;gap:6px">
+            <div id="mb-loading"
+              style="display:none;font-size:12px;color:var(--t2);font-family:var(--mono);margin-bottom:1rem;display:none;align-items:center;gap:6px">
               <div class="spin" style="width:12px;height:12px;border-width:1.5px"></div>
               Consultando Metabase...
             </div>
@@ -1664,9 +1681,9 @@
       document.getElementById('app-screen').style.flexDirection = 'column';
 
       // Siempre ocultar todos los tabs primero
-      ['conteo','pistoleo','admin','about'].forEach(t => {
-        const el = document.getElementById('tab-'+t);
-        if(el) el.style.display = 'none';
+      ['conteo', 'pistoleo', 'admin', 'about'].forEach(t => {
+        const el = document.getElementById('tab-' + t);
+        if (el) el.style.display = 'none';
       });
       // Siempre ocultar elementos admin primero
       document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
@@ -1805,17 +1822,17 @@
 
     // ─── PISTOLEO ───
     // ─── METABASE ───
-    async function loadMBCache(){
-      if(mbCache) return mbCache;
+    async function loadMBCache() {
+      if (mbCache) return mbCache;
       try {
         // Primero intenta cargar el archivo estático de GitHub
         const res = await fetch(MB_STATIC);
-        if(res.ok){
+        if (res.ok) {
           mbCache = await res.json();
           console.log('MB cache cargado desde archivo:', mbCache.length, 'equipos');
           return mbCache;
         }
-      } catch(e) {
+      } catch (e) {
         console.log('Archivo estático no disponible, intentando API...');
       }
       // Si falla, intenta la API de Metabase directamente
@@ -1823,61 +1840,41 @@
         mbCache = [];
         const res = await fetch(MB_URL, {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({parameters: []})
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parameters: [] })
         });
         const json = await res.json();
         const cols = json.data?.cols?.map(c => c.name) || [];
         const rows = json.data?.rows || [];
         mbCache = rows.map(r => {
           const obj = {};
-          cols.forEach((c,i) => obj[c] = r[i]);
+          cols.forEach((c, i) => obj[c] = r[i]);
           return obj;
         });
         console.log('MB cache cargado desde API:', mbCache.length, 'equipos');
         return mbCache;
-      } catch(e) {
+      } catch (e) {
         console.log('MB no disponible:', e);
         return [];
       }
     }
 
-    async function autofill(){
-      const s = document.getElementById('ps').value.trim();
-      if(!s) { document.getElementById('mb-panel').style.display='none'; return; }
-
-      // Buscar en datos locales (Google Sheet)
+    async function autofill() {
+      // Reemplaza esta parte dentro de autofill()
       const found = data.find(r => r.Serial === s);
-      if(found){
+      if (found) {
+        // NUEVO: Mostrar alerta visual
+        document.getElementById('dup-warn').style.display = 'block';
+
         document.getElementById('pn').value = found.Nombre || '';
-        if(CU?.role==='admin'){
+        if (CU?.role === 'admin') {
           document.getElementById('pst').value = found.Status || '';
-          if(!document.getElementById('pub').value) document.getElementById('pub').value = found.Ubicacion || '';
+          if (!document.getElementById('pub').value) document.getElementById('pub').value = found.Ubicacion || '';
         }
         document.getElementById('pest').value = found.Estanteria || '';
-      }
-
-      // Consultar Metabase si el serial tiene 5+ caracteres
-      if(s.length < 4) return;
-      document.getElementById('mb-loading').style.display='flex';
-      const mb = await loadMBCache();
-      document.getElementById('mb-loading').style.display='none';
-
-      const eq = mb.find(r => String(r.serial||'').trim().toLowerCase() === s.toLowerCase());
-      if(eq){
-        document.getElementById('mb-panel').style.display='block';
-        document.getElementById('mb-sku').textContent = eq.sku || '—';
-        document.getElementById('mb-estado').textContent = eq.estado || '—';
-        document.getElementById('mb-marca').textContent = eq.marca || '—';
-        document.getElementById('mb-bia').textContent = eq.bia_code || '—';
-        document.getElementById('mb-ubicacion').textContent = eq.ubicacion || '—';
-        document.getElementById('mb-venc1').textContent = eq.vencimiento_certificado_conformidad || '—';
-        document.getElementById('mb-venc2').textContent = eq.vencimiento_certificado_calibracion || '—';
-        // Autocompletar nombre si no hay
-        if(!document.getElementById('pn').value && eq.sku)
-          document.getElementById('pn').value = 'SKU ' + eq.sku + (eq.marca ? ' · ' + eq.marca : '');
       } else {
-        document.getElementById('mb-panel').style.display='none';
+        // NUEVO: Ocultar alerta si no existe
+        document.getElementById('dup-warn').style.display = 'none';
       }
     }
     async function saveP() {
@@ -1898,17 +1895,57 @@
       clearP();
       goTab('conteo', document.querySelectorAll('.ntab')[0]);
     }
-    function clearP() {
-      ['ps', 'pn', 'pub', 'pest'].forEach(id => document.getElementById(id).value = '');
-      document.getElementById('pst').value = '';
-      document.getElementById('phprev').style.display = 'none';
-      document.getElementById('phph').style.display = 'block';
-      document.getElementById('mb-panel').style.display = 'none';
-      photoB64 = null; closeCam();
-      if (CU?.role === 'operario' && CU?.bodega !== 'Todas') {
-        document.getElementById('pub').value = CU.bodega;
-        document.getElementById('pst').value = 'Disponible';
+    async function saveP() {
+      const serial = document.getElementById('ps').value.trim();
+      const nombre = document.getElementById('pn').value.trim();
+      const status = document.getElementById('pst').value;
+      const ubic = document.getElementById('pub').value.trim();
+      const est = document.getElementById('pest').value.trim();
+
+      if (!serial || !status || !ubic) { toast('Completa Serial, Status y Ubicación', 'e'); return; }
+
+      // NUEVO: Lógica de alerta/confirmación de duplicado
+      const idx = data.findIndex(r => r.Serial === serial);
+      if (idx >= 0) {
+        const confirmar = confirm(`⚠️ El equipo ${serial} ya está en el sistema (Ubicación actual: ${data[idx].Ubicacion}).\n\n¿Deseas actualizarlo con este nuevo pistoleo?`);
+        if (!confirmar) return; // Si el usuario cancela, detenemos el guardado
       }
+
+      const btn = document.getElementById('savebtn');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      document.getElementById('saving').classList.add('show');
+
+      const fecha = new Date().toLocaleString('es-CO');
+      const usuario = CU.nombre;
+
+      // Enviar a Google Sheets
+      try {
+        fetch(API_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: JSON.stringify({ Serial: serial, Nombre: nombre, Status: status, Ubicacion: ubic, Estanteria: est, Fecha_pistoleo: fecha, Usuario: usuario })
+        }).catch(e => console.log('Sheets:', e));
+      } catch (e) { console.log('Error Sheets:', e); }
+
+      const rec = { Serial: serial, Nombre: nombre, Status: status, Ubicacion: ubic, Estanteria: est, Foto: photoB64 ? '[foto]' : '', Fecha_pistoleo: fecha, Usuario: usuario };
+
+      if (idx >= 0) data[idx] = rec; else data.unshift(rec);
+
+      // NUEVO: Guardar en la auditoría local (bia_audit)
+      const auditRecord = { serial, nombre, status, ubic, est, foto: photoB64, fecha, usuario };
+      audit.unshift(auditRecord);
+      localStorage.setItem('bia_audit', JSON.stringify(audit));
+      await new Promise(r => setTimeout(r, 600));
+      btn.disabled = false;
+      btn.textContent = 'Guardar pistoleo';
+      document.getElementById('saving').classList.remove('show');
+      updateStats();
+      populateFiltros();
+      if (CU.role === 'admin') updateAdmin();
+      toast(idx >= 0 ? `Equipo ${serial} actualizado` : `Equipo ${serial} registrado`, 's');
+      clearP();
+      goTab('conteo', document.querySelectorAll('.ntab')[0]);
     }
 
     // ─── CÁMARA ───
@@ -2082,7 +2119,7 @@
 
     // ─── TABS ───
     function goTab(tab, btn) {
-      if(tab === 'admin' && CU?.role !== 'admin') { toast('No tienes permisos para acceder a esta sección','e'); return; }
+      if (tab === 'admin' && CU?.role !== 'admin') { toast('No tienes permisos para acceder a esta sección', 'e'); return; }
       ['conteo', 'pistoleo', 'admin', 'about'].forEach(t => {
         const el = document.getElementById('tab-' + t);
         if (el) el.style.display = t === tab ? 'block' : 'none';
