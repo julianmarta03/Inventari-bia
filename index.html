@@ -1651,36 +1651,13 @@
       { user: 'julian', pass: 'Bia2024', nombre: 'Julian Abelardo', bodega: 'Bia Barranquilla', role: 'operario' },
       { user: 'operario_bog', pass: 'Bog2024', nombre: 'Operario Bogotá', bodega: 'Bia Bogotá', role: 'operario' },
     ];
-    // Cargar usuarios desde Google Sheets
-    async function loadUsersFromSheet() {
-      try {
-        const res = await fetch(API_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          body: JSON.stringify({ action: 'getUsers' })
-        });
-
-        // Como es no-cors, no podemos leer la respuesta directamente
-        // Intentamos leer de localStorage primero, si no hay, usamos default
-        const cached = localStorage.getItem('bia_users');
-        if (cached) {
-          return JSON.parse(cached);
-        }
-        return DEF_USERS;
-      } catch (e) {
-        console.log('Error cargando usuarios, usando default:', e);
-        return JSON.parse(localStorage.getItem('bia_users') || JSON.stringify(DEF_USERS));
-      }
-    }
-
-    // Función síncrona para obtener usuarios del localStorage
+    // ─── USUARIOS: Sincronización con Google Sheets ───
     const getUsers = () => JSON.parse(localStorage.getItem('bia_users') || JSON.stringify(DEF_USERS));
 
-    // Guardar usuarios en localStorage Y Google Sheets
     async function saveUsers(users) {
       // Guardar en localStorage primero
       localStorage.setItem('bia_users', JSON.stringify(users));
-
+      
       // Guardar cada usuario en Google Sheets
       for (const user of users) {
         try {
@@ -1703,19 +1680,18 @@
       }
     }
 
-    // Sincronizar usuarios desde Sheet al cargar
     async function syncUsers() {
       try {
-        // Usar la API de visualización para leer usuarios
         const SID = '1CGo7uEZCUVGieN8iDJ72EE4EUsVUcIZjOmcVUFMdXOQ';
         const USERS_URL = `https://docs.google.com/spreadsheets/d/${SID}/gviz/tq?tqx=out:json&sheet=Usuarios&headers=1`;
-
+        
         const res = await fetch(USERS_URL);
         const txt = await res.text();
         const json = JSON.parse(txt.replace(/^[^(]*\(/, '').replace(/\);?\s*$/, ''));
+        
         const cols = json.table.cols.map(c => c.label);
         const rows = json.table.rows;
-
+        
         const users = rows.map(r => {
           const user = {};
           cols.forEach((c, i) => {
@@ -1730,20 +1706,20 @@
             role: user.role || 'operario',
             active: String(user.active).toUpperCase() !== 'FALSE'
           };
-        }).filter(u => u.user); // Solo usuarios con nombre de usuario
-
-        // Guardar en localStorage
+        }).filter(u => u.user);
+        
         if (users.length > 0) {
           localStorage.setItem('bia_users', JSON.stringify(users));
-          console.log('Usuarios sincronizados desde Sheet:', users.length);
+          console.log('✅ Usuarios sincronizados desde Sheet:', users.length);
         }
-
+        
         return users;
       } catch (e) {
-        console.log('Error sincronizando usuarios:', e);
+        console.log('⚠️ Error sincronizando usuarios:', e);
         return getUsers();
       }
     }
+
     // ─── AUTH ───
     let CU = null;
     function login() {
@@ -1802,7 +1778,7 @@
       const conteoTab = document.querySelector('.ntab');
       goTab('conteo', conteoTab);
       loadData();
-      // Precargar Metabase en background
+      // Sincronizar usuarios desde Google Sheets
       syncUsers();
       // Precargar Metabase en background
       setTimeout(() => loadMBCache(), 2000);
@@ -1951,7 +1927,7 @@
     async function autofill() {
       // 1. Capturar el valor exacto del input del serial
       const s = document.getElementById('ps').value.trim();
-
+      
       // Si el campo está vacío, ocultamos todo y salimos
       if (!s) {
         document.getElementById('dup-warn').style.display = 'none';
@@ -1959,7 +1935,7 @@
         document.getElementById('mb-loading').style.display = 'none';
         return;
       }
-
+      
       // 2. Buscar el serial en los datos cargados del Sheet
       const found = data.find(r => String(r.Serial) === s || String(r.serial) === s);
       if (found) {
@@ -1979,29 +1955,33 @@
         // Si no existe, ocultamos la alerta
         document.getElementById('dup-warn').style.display = 'none';
       }
+      
       // 6. Buscar el serial en Metabase y mostrar panel verde
       await searchMetabase(s);
     }
+    
     async function searchMetabase(serial) {
       // Ocultar panel mientras buscamos
       document.getElementById('mb-panel').style.display = 'none';
-      // Limpiar campo de nombre
-      document.getElementById('pn').value = '';
+      
       // Mostrar loading
       const loading = document.getElementById('mb-loading');
       loading.style.display = 'flex';
+      
       try {
         // Cargar cache de Metabase si no existe
         const cache = await loadMBCache();
-
+        
         // Buscar el serial (normalizar comparando sin ceros a la izquierda)
         const normalizeSerial = (s) => String(s).replace(/^0+/, '');
-        const mbData = cache.find(eq =>
+        const mbData = cache.find(eq => 
           normalizeSerial(eq.serial) === normalizeSerial(serial) ||
           String(eq.serial) === serial
         );
+        
         // Ocultar loading
         loading.style.display = 'none';
+        
         if (mbData) {
           // Llenar los campos del panel
           document.getElementById('mb-sku').textContent = mbData.sku || '—';
@@ -2009,7 +1989,7 @@
           document.getElementById('mb-marca').textContent = mbData.marca || '—';
           document.getElementById('mb-bia').textContent = mbData.bia_code || '—';
           document.getElementById('mb-ubicacion').textContent = mbData.ubicacion || '—';
-
+          
           // Formatear fechas de vencimiento
           const formatDate = (dateStr) => {
             if (!dateStr || dateStr === '—') return '—';
@@ -2020,19 +2000,16 @@
               return dateStr;
             }
           };
-
+          
           document.getElementById('mb-venc1').textContent = formatDate(mbData.venc_conf);
           document.getElementById('mb-venc2').textContent = formatDate(mbData.venc_calib);
-
+          
           // Mostrar el panel
           document.getElementById('mb-panel').style.display = 'block';
-
+          
           // Auto-completar nombre desde Metabase si está vacío
-          // Auto-completar nombre desde Metabase
-          if (mbData.sku) {
+          if (!document.getElementById('pn').value && mbData.sku) {
             document.getElementById('pn').value = mbData.sku;
-          } else {
-            document.getElementById('pn').value = '';
           }
         } else {
           // No se encontró en Metabase
@@ -2044,7 +2021,7 @@
         document.getElementById('mb-panel').style.display = 'none';
       }
     }
-
+    
     function clearP() {
       document.getElementById('ps').value = '';
       document.getElementById('pn').value = '';
@@ -2240,7 +2217,7 @@
       const nuevaPass = prompt(`Nueva contraseña para ${users[i].nombre}:`);
       if (!nuevaPass || !nuevaPass.trim()) { toast('Contraseña no cambiada', 'e'); return; }
       users[i].pass = nuevaPass.trim();
-      await saveUsers(users);
+      await saveUsers(users); 
       renderUsers();
       toast(`Contraseña de ${users[i].nombre} actualizada`, 's');
     }
@@ -2252,60 +2229,83 @@
       const existe = users.find((u, idx) => idx !== i && u.user.toLowerCase() === nuevoUser.trim().toLowerCase());
       if (existe) { toast('Ese nombre de usuario ya existe', 'e'); return; }
       users[i].user = nuevoUser.trim();
-      await saveUsers(users);
+      await saveUsers(users); 
       renderUsers();
       toast(`Usuario cambiado a: ${nuevoUser.trim()}`, 's');
     }
-
+    
     async function editNombre(i) {
       const users = getUsers();
       const nuevoNombre = prompt(`Nuevo nombre completo para ${users[i].nombre}:\nActual: ${users[i].nombre}`);
       if (!nuevoNombre || !nuevoNombre.trim()) { toast('Nombre no cambiado', 'e'); return; }
       const nombreAnterior = users[i].nombre;
       users[i].nombre = nuevoNombre.trim();
-      await saveUsers();
+      await saveUsers(users); 
       renderUsers();
       toast(`Nombre cambiado de "${nombreAnterior}" a "${nuevoNombre.trim()}"`, 's');
     }
+    
     async function changeRole(i, newRole) {
       const users = getUsers();
       users[i].role = newRole;
-      await saveUsers(users);
-      renderUsers();
+      await saveUsers(users); 
+      renderUsers(); 
       updateAdmin();
       toast(`Rol cambiado a ${newRole}`, 's');
     }
+    
     async function toggleUser(i) {
       const users = getUsers();
       users[i].active = users[i].active === false ? true : false;
-      await saveUsers(users);
-      renderUsers();
+      await saveUsers(users); 
+      renderUsers(); 
       updateAdmin();
       toast(`Usuario ${users[i].active ? 'activado' : 'desactivado'}`, 's');
     }
+    
     async function addUser() {
       const user = document.getElementById('nu').value.trim();
       const pass = document.getElementById('np').value;
       const nombre = document.getElementById('nn').value.trim();
       const bodega = document.getElementById('nb').value.trim();
       const role = document.getElementById('nr').value;
-
-      if (!user || !pass || !nombre) {
-        toast('Completa todos los campos', 'e');
-        return;
+      
+      if (!user || !pass || !nombre) { 
+        toast('Completa todos los campos', 'e'); 
+        return; 
       }
+      
       const users = getUsers();
-      if (users.find(u => u.user === user)) {
-        toast('Ese usuario ya existe', 'e');
-        return;
+      
+      if (users.find(u => u.user === user)) { 
+        toast('Ese usuario ya existe', 'e'); 
+        return; 
       }
+      
       users.push({ user, pass, nombre, bodega, role, active: true });
+      
       await saveUsers(users);
+      
+      renderUsers(); 
       updateAdmin();
+      
       ['nu', 'np', 'nn', 'nb'].forEach(id => document.getElementById(id).value = '');
+      
       toast(`Usuario ${nombre} creado`, 's');
     }
-    function delUser(i) { const users = getUsers(); if (users[i].user === 'admin') { toast('No puedes eliminar al admin principal', 'e'); return; } users.splice(i, 1); saveUsers(users); renderUsers(); updateAdmin(); toast('Usuario eliminado', 's'); }
+    
+    async function delUser(i) { 
+      const users = getUsers(); 
+      if (users[i].user === 'admin') { 
+        toast('No puedes eliminar al admin principal', 'e'); 
+        return; 
+      } 
+      users.splice(i, 1); 
+      await saveUsers(users); 
+      renderUsers(); 
+      updateAdmin(); 
+      toast('Usuario eliminado', 's'); 
+    }
     function updateAdmin() { renderUsers(); document.getElementById('admt').textContent = data.length.toLocaleString(); document.getElementById('admp').textContent = audit.length.toLocaleString(); document.getElementById('admu').textContent = getUsers().length; document.getElementById('adms').textContent = lastSync ? lastSync.toLocaleString('es-CO') : 'Sin sync'; }
 
     // ─── EXPORT ───
