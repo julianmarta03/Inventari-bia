@@ -1,11 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
-<!-- Version: 2.0.1 - Login Fix - 2026-04-12 -->
+
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
   <meta name="theme-color" content="#4ade80">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1862,12 +1859,16 @@
     async function autofill() {
       // 1. Capturar el valor exacto del input del serial
       const s = document.getElementById('ps').value.trim();
-      // Si el campo está vacío, ocultamos la alerta y no hacemos nada más
+      
+      // Si el campo está vacío, ocultamos todo y salimos
       if (!s) {
         document.getElementById('dup-warn').style.display = 'none';
+        document.getElementById('mb-panel').style.display = 'none';
+        document.getElementById('mb-loading').style.display = 'none';
         return;
       }
-      // 2. Buscar el serial en los datos cargados (soporta mayúsculas y minúsculas en las llaves)
+      
+      // 2. Buscar el serial en los datos cargados del Sheet
       const found = data.find(r => String(r.Serial) === s || String(r.serial) === s);
       if (found) {
         // 3. Mostrar alerta visual de que ya existe
@@ -1886,6 +1887,87 @@
         // Si no existe, ocultamos la alerta
         document.getElementById('dup-warn').style.display = 'none';
       }
+      
+      // 6. Buscar el serial en Metabase y mostrar panel verde
+      await searchMetabase(s);
+    }
+    
+    async function searchMetabase(serial) {
+      // Ocultar panel mientras buscamos
+      document.getElementById('mb-panel').style.display = 'none';
+      
+      // Mostrar loading
+      const loading = document.getElementById('mb-loading');
+      loading.style.display = 'flex';
+      
+      try {
+        // Cargar cache de Metabase si no existe
+        const cache = await loadMBCache();
+        
+        // Buscar el serial (normalizar comparando sin ceros a la izquierda)
+        const normalizeSerial = (s) => String(s).replace(/^0+/, '');
+        const mbData = cache.find(eq => 
+          normalizeSerial(eq.serial) === normalizeSerial(serial) ||
+          String(eq.serial) === serial
+        );
+        
+        // Ocultar loading
+        loading.style.display = 'none';
+        
+        if (mbData) {
+          // Llenar los campos del panel
+          document.getElementById('mb-sku').textContent = mbData.sku || '—';
+          document.getElementById('mb-estado').textContent = mbData.estado || '—';
+          document.getElementById('mb-marca').textContent = mbData.marca || '—';
+          document.getElementById('mb-bia').textContent = mbData.bia_code || '—';
+          document.getElementById('mb-ubicacion').textContent = mbData.ubicacion || '—';
+          
+          // Formatear fechas de vencimiento
+          const formatDate = (dateStr) => {
+            if (!dateStr || dateStr === '—') return '—';
+            try {
+              const date = new Date(dateStr);
+              return date.toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' });
+            } catch {
+              return dateStr;
+            }
+          };
+          
+          document.getElementById('mb-venc1').textContent = formatDate(mbData.venc_conf);
+          document.getElementById('mb-venc2').textContent = formatDate(mbData.venc_calib);
+          
+          // Mostrar el panel
+          document.getElementById('mb-panel').style.display = 'block';
+          
+          // Auto-completar nombre desde Metabase si está vacío
+          if (!document.getElementById('pn').value && mbData.sku) {
+            document.getElementById('pn').value = mbData.sku;
+          }
+        } else {
+          // No se encontró en Metabase
+          document.getElementById('mb-panel').style.display = 'none';
+        }
+      } catch (e) {
+        console.error('Error buscando en Metabase:', e);
+        loading.style.display = 'none';
+        document.getElementById('mb-panel').style.display = 'none';
+      }
+    }
+    
+    function clearP() {
+      document.getElementById('ps').value = '';
+      document.getElementById('pn').value = '';
+      document.getElementById('pst').value = '';
+      if (CU?.role === 'admin') {
+        document.getElementById('pub').value = '';
+      }
+      document.getElementById('pest').value = '';
+      photoB64 = null;
+      document.getElementById('phprev').style.display = 'none';
+      document.getElementById('phph').style.display = 'block';
+      document.getElementById('dup-warn').style.display = 'none';
+      document.getElementById('mb-panel').style.display = 'none';
+      document.getElementById('mb-loading').style.display = 'none';
     }
     async function saveP() {
       const serial = document.getElementById('ps').value.trim();
@@ -2230,19 +2312,6 @@ Pregunta: ${msg}`
       t.className = `toast show ${type}`;
       setTimeout(() => t.classList.remove('show'), 3500);
     }
-
-    // ─── INIT ───
-    // Asegurar que el botón de login siempre funcione
-    document.addEventListener('DOMContentLoaded', function() {
-      const loginBtn = document.querySelector('.lbtn');
-      if (loginBtn) {
-        // Agregar event listener adicional por si el onclick inline falla
-        loginBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          login();
-        });
-      }
-    });
   </script>
 </body>
 
