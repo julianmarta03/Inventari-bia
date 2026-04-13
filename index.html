@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
-
+<!-- Version: 2.0.1 - Login Fix - 2026-04-12 -->
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="theme-color" content="#4ade80">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2227,6 +2230,19 @@ Pregunta: ${msg}`
       t.className = `toast show ${type}`;
       setTimeout(() => t.classList.remove('show'), 3500);
     }
+
+    // ─── INIT ───
+    // Asegurar que el botón de login siempre funcione
+    document.addEventListener('DOMContentLoaded', function() {
+      const loginBtn = document.querySelector('.lbtn');
+      if (loginBtn) {
+        // Agregar event listener adicional por si el onclick inline falla
+        loginBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          login();
+        });
+      }
+    });
   </script>
 </body>
 
