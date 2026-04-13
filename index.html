@@ -1651,9 +1651,99 @@
       { user: 'julian', pass: 'Bia2024', nombre: 'Julian Abelardo', bodega: 'Bia Barranquilla', role: 'operario' },
       { user: 'operario_bog', pass: 'Bog2024', nombre: 'Operario Bogotá', bodega: 'Bia Bogotá', role: 'operario' },
     ];
-    const getUsers = () => JSON.parse(localStorage.getItem('bia_users') || JSON.stringify(DEF_USERS));
-    const saveUsers = u => localStorage.setItem('bia_users', JSON.stringify(u));
+    // Cargar usuarios desde Google Sheets
+    async function loadUsersFromSheet() {
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: JSON.stringify({ action: 'getUsers' })
+        });
 
+        // Como es no-cors, no podemos leer la respuesta directamente
+        // Intentamos leer de localStorage primero, si no hay, usamos default
+        const cached = localStorage.getItem('bia_users');
+        if (cached) {
+          return JSON.parse(cached);
+        }
+        return DEF_USERS;
+      } catch (e) {
+        console.log('Error cargando usuarios, usando default:', e);
+        return JSON.parse(localStorage.getItem('bia_users') || JSON.stringify(DEF_USERS));
+      }
+    }
+
+    // Función síncrona para obtener usuarios del localStorage
+    const getUsers = () => JSON.parse(localStorage.getItem('bia_users') || JSON.stringify(DEF_USERS));
+
+    // Guardar usuarios en localStorage Y Google Sheets
+    async function saveUsers(users) {
+      // Guardar en localStorage primero
+      localStorage.setItem('bia_users', JSON.stringify(users));
+
+      // Guardar cada usuario en Google Sheets
+      for (const user of users) {
+        try {
+          await fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({
+              action: 'saveUser',
+              user: user.user,
+              pass: user.pass,
+              nombre: user.nombre,
+              bodega: user.bodega,
+              role: user.role,
+              active: user.active !== false
+            })
+          });
+        } catch (e) {
+          console.log('Error guardando usuario en Sheet:', user.user, e);
+        }
+      }
+    }
+
+    // Sincronizar usuarios desde Sheet al cargar
+    async function syncUsers() {
+      try {
+        // Usar la API de visualización para leer usuarios
+        const SID = '1CGo7uEZCUVGieN8iDJ72EE4EUsVUcIZjOmcVUFMdXOQ';
+        const USERS_URL = `https://docs.google.com/spreadsheets/d/${SID}/gviz/tq?tqx=out:json&sheet=Usuarios&headers=1`;
+
+        const res = await fetch(USERS_URL);
+        const txt = await res.text();
+        const json = JSON.parse(txt.replace(/^[^(]*\(/, '').replace(/\);?\s*$/, ''));
+        const cols = json.table.cols.map(c => c.label);
+        const rows = json.table.rows;
+
+        const users = rows.map(r => {
+          const user = {};
+          cols.forEach((c, i) => {
+            const val = r.c[i] ? (r.c[i].v !== null ? String(r.c[i].v) : '') : '';
+            user[c] = val;
+          });
+          return {
+            user: user.user || '',
+            pass: user.pass || '',
+            nombre: user.nombre || '',
+            bodega: user.bodega || '',
+            role: user.role || 'operario',
+            active: String(user.active).toUpperCase() !== 'FALSE'
+          };
+        }).filter(u => u.user); // Solo usuarios con nombre de usuario
+
+        // Guardar en localStorage
+        if (users.length > 0) {
+          localStorage.setItem('bia_users', JSON.stringify(users));
+          console.log('Usuarios sincronizados desde Sheet:', users.length);
+        }
+
+        return users;
+      } catch (e) {
+        console.log('Error sincronizando usuarios:', e);
+        return getUsers();
+      }
+    }
     // ─── AUTH ───
     let CU = null;
     function login() {
@@ -1712,6 +1802,8 @@
       const conteoTab = document.querySelector('.ntab');
       goTab('conteo', conteoTab);
       loadData();
+      // Precargar Metabase en background
+      syncUsers();
       // Precargar Metabase en background
       setTimeout(() => loadMBCache(), 2000);
     }
@@ -2143,53 +2235,75 @@
       }
     }
 
-    function editPass(i) {
+    async function editPass(i) {
       const users = getUsers();
       const nuevaPass = prompt(`Nueva contraseña para ${users[i].nombre}:`);
       if (!nuevaPass || !nuevaPass.trim()) { toast('Contraseña no cambiada', 'e'); return; }
       users[i].pass = nuevaPass.trim();
-      saveUsers(users); renderUsers();
+      await saveUsers(users);
+      renderUsers();
       toast(`Contraseña de ${users[i].nombre} actualizada`, 's');
     }
 
-    function editUsername(i) {
+    async function editUsername(i) {
       const users = getUsers();
       const nuevoUser = prompt(`Nuevo nombre de usuario para ${users[i].nombre}:\nActual: ${users[i].user}`);
       if (!nuevoUser || !nuevoUser.trim()) { toast('Usuario no cambiado', 'e'); return; }
       const existe = users.find((u, idx) => idx !== i && u.user.toLowerCase() === nuevoUser.trim().toLowerCase());
       if (existe) { toast('Ese nombre de usuario ya existe', 'e'); return; }
       users[i].user = nuevoUser.trim();
-      saveUsers(users); renderUsers();
+      await saveUsers(users);
+      renderUsers();
       toast(`Usuario cambiado a: ${nuevoUser.trim()}`, 's');
     }
 
-    function editNombre(i) {
+    async function editNombre(i) {
       const users = getUsers();
       const nuevoNombre = prompt(`Nuevo nombre completo para ${users[i].nombre}:\nActual: ${users[i].nombre}`);
       if (!nuevoNombre || !nuevoNombre.trim()) { toast('Nombre no cambiado', 'e'); return; }
       const nombreAnterior = users[i].nombre;
       users[i].nombre = nuevoNombre.trim();
-      saveUsers(users); renderUsers();
+      await saveUsers();
+      renderUsers();
       toast(`Nombre cambiado de "${nombreAnterior}" a "${nuevoNombre.trim()}"`, 's');
     }
-    function changeRole(i, newRole) {
+    async function changeRole(i, newRole) {
       const users = getUsers();
       users[i].role = newRole;
-      saveUsers(users); renderUsers(); updateAdmin();
+      await saveUsers(users);
+      renderUsers();
+      updateAdmin();
       toast(`Rol cambiado a ${newRole}`, 's');
     }
-    function toggleUser(i) {
+    async function toggleUser(i) {
       const users = getUsers();
       users[i].active = users[i].active === false ? true : false;
-      saveUsers(users); renderUsers(); updateAdmin();
+      await saveUsers(users);
+      renderUsers();
+      updateAdmin();
       toast(`Usuario ${users[i].active ? 'activado' : 'desactivado'}`, 's');
     }
-    function addUser() {
-      const user = document.getElementById('nu').value.trim(), pass = document.getElementById('np').value, nombre = document.getElementById('nn').value.trim(), bodega = document.getElementById('nb').value.trim(), role = document.getElementById('nr').value;
-      if (!user || !pass || !nombre) { toast('Completa todos los campos', 'e'); return; }
-      const users = getUsers(); if (users.find(u => u.user === user)) { toast('Ese usuario ya existe', 'e'); return; }
-      users.push({ user, pass, nombre, bodega, role }); saveUsers(users); renderUsers(); updateAdmin();
-      ['nu', 'np', 'nn', 'nb'].forEach(id => document.getElementById(id).value = ''); toast(`Usuario ${nombre} creado`, 's');
+    async function addUser() {
+      const user = document.getElementById('nu').value.trim();
+      const pass = document.getElementById('np').value;
+      const nombre = document.getElementById('nn').value.trim();
+      const bodega = document.getElementById('nb').value.trim();
+      const role = document.getElementById('nr').value;
+
+      if (!user || !pass || !nombre) {
+        toast('Completa todos los campos', 'e');
+        return;
+      }
+      const users = getUsers();
+      if (users.find(u => u.user === user)) {
+        toast('Ese usuario ya existe', 'e');
+        return;
+      }
+      users.push({ user, pass, nombre, bodega, role, active: true });
+      await saveUsers(users);
+      updateAdmin();
+      ['nu', 'np', 'nn', 'nb'].forEach(id => document.getElementById(id).value = '');
+      toast(`Usuario ${nombre} creado`, 's');
     }
     function delUser(i) { const users = getUsers(); if (users[i].user === 'admin') { toast('No puedes eliminar al admin principal', 'e'); return; } users.splice(i, 1); saveUsers(users); renderUsers(); updateAdmin(); toast('Usuario eliminado', 's'); }
     function updateAdmin() { renderUsers(); document.getElementById('admt').textContent = data.length.toLocaleString(); document.getElementById('admp').textContent = audit.length.toLocaleString(); document.getElementById('admu').textContent = getUsers().length; document.getElementById('adms').textContent = lastSync ? lastSync.toLocaleString('es-CO') : 'Sin sync'; }
