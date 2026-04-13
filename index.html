@@ -1859,7 +1859,7 @@
     async function autofill() {
       // 1. Capturar el valor exacto del input del serial
       const s = document.getElementById('ps').value.trim();
-      
+
       // Si el campo está vacío, ocultamos todo y salimos
       if (!s) {
         document.getElementById('dup-warn').style.display = 'none';
@@ -1867,7 +1867,7 @@
         document.getElementById('mb-loading').style.display = 'none';
         return;
       }
-      
+
       // 2. Buscar el serial en los datos cargados del Sheet
       const found = data.find(r => String(r.Serial) === s || String(r.serial) === s);
       if (found) {
@@ -1887,33 +1887,29 @@
         // Si no existe, ocultamos la alerta
         document.getElementById('dup-warn').style.display = 'none';
       }
-      
       // 6. Buscar el serial en Metabase y mostrar panel verde
       await searchMetabase(s);
     }
-    
     async function searchMetabase(serial) {
       // Ocultar panel mientras buscamos
       document.getElementById('mb-panel').style.display = 'none';
-      
+      // Limpiar campo de nombre
+      document.getElementById('pn').value = '';
       // Mostrar loading
       const loading = document.getElementById('mb-loading');
       loading.style.display = 'flex';
-      
       try {
         // Cargar cache de Metabase si no existe
         const cache = await loadMBCache();
-        
+
         // Buscar el serial (normalizar comparando sin ceros a la izquierda)
         const normalizeSerial = (s) => String(s).replace(/^0+/, '');
-        const mbData = cache.find(eq => 
+        const mbData = cache.find(eq =>
           normalizeSerial(eq.serial) === normalizeSerial(serial) ||
           String(eq.serial) === serial
         );
-        
         // Ocultar loading
         loading.style.display = 'none';
-        
         if (mbData) {
           // Llenar los campos del panel
           document.getElementById('mb-sku').textContent = mbData.sku || '—';
@@ -1921,7 +1917,7 @@
           document.getElementById('mb-marca').textContent = mbData.marca || '—';
           document.getElementById('mb-bia').textContent = mbData.bia_code || '—';
           document.getElementById('mb-ubicacion').textContent = mbData.ubicacion || '—';
-          
+
           // Formatear fechas de vencimiento
           const formatDate = (dateStr) => {
             if (!dateStr || dateStr === '—') return '—';
@@ -1932,16 +1928,19 @@
               return dateStr;
             }
           };
-          
+
           document.getElementById('mb-venc1').textContent = formatDate(mbData.venc_conf);
           document.getElementById('mb-venc2').textContent = formatDate(mbData.venc_calib);
-          
+
           // Mostrar el panel
           document.getElementById('mb-panel').style.display = 'block';
-          
+
           // Auto-completar nombre desde Metabase si está vacío
-          if (!document.getElementById('pn').value && mbData.sku) {
+          // Auto-completar nombre desde Metabase
+          if (mbData.sku) {
             document.getElementById('pn').value = mbData.sku;
+          } else {
+            document.getElementById('pn').value = '';
           }
         } else {
           // No se encontró en Metabase
@@ -1953,7 +1952,7 @@
         document.getElementById('mb-panel').style.display = 'none';
       }
     }
-    
+
     function clearP() {
       document.getElementById('ps').value = '';
       document.getElementById('pn').value = '';
@@ -2163,7 +2162,7 @@
       saveUsers(users); renderUsers();
       toast(`Usuario cambiado a: ${nuevoUser.trim()}`, 's');
     }
-    
+
     function editNombre(i) {
       const users = getUsers();
       const nuevoNombre = prompt(`Nuevo nombre completo para ${users[i].nombre}:\nActual: ${users[i].nombre}`);
