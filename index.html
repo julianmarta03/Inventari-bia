@@ -2586,15 +2586,13 @@ Pregunta: ${msg}`
       selA.innerHTML = '<option value="">— Selecciona —</option>' + opts;
       selB.innerHTML = '<option value="">— Selecciona —</option>' + opts;
 
-      // Cargar bodegas únicas desde los items
+      // Cargar bodegas únicas desde la vista
       try {
-        const res = await fetch(`${SB_URL}/rest/v1/inventario_items?select=ubicacion&limit=5000`, {
+        const res = await fetch(`${SB_URL}/rest/v1/bodegas_unicas?order=bodega`, {
           headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
         });
-        const items = await res.json();
-        const bodegas = [...new Set(
-          items.map(i => (i.ubicacion || '').trim()).filter(b => b.length > 1)
-        )].sort();
+        const rows = await res.json();
+        const bodegas = rows.map(r => r.bodega).filter(Boolean);
         selBodega.innerHTML = '<option value="">Todas</option>' + bodegas.map(b => `<option value="${b}">${b}</option>`).join('');
       } catch(e) {
         console.error('Error cargando bodegas:', e);
