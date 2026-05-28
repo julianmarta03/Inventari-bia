@@ -1899,42 +1899,27 @@
     }
 
     // ─── PISTOLEO ───
-    // ─── METABASE EN TIEMPO REAL ───
+    // ─── METABASE EN TIEMPO REAL (vía proxy Vercel) ───
     async function searchMetabaseAPI(serial) {
-      // Recargar key por si fue guardada recientemente
       MB_KEY = localStorage.getItem('bia_mb_key') || '';
       if (!MB_KEY) return null;
       try {
-        const res = await fetch(MB_URL, {
+        const res = await fetch('/api/metabase', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': MB_KEY
-          },
-          body: JSON.stringify({
-            parameters: [
-              {
-                type: 'category',
-                target: ['variable', ['template-tag', 'serial']],
-                value: serial.trim()
-              }
-            ]
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serial: serial.trim(), apiKey: MB_KEY })
         });
-        if (!res.ok) {
-          console.warn('[MB API] Error:', res.status);
-          return null;
-        }
+        if (!res.ok) { console.warn('[MB Proxy] Error:', res.status); return null; }
         const rows = await res.json();
         if (!Array.isArray(rows) || rows.length === 0) return null;
-        return rows[0]; // Retorna la primera fila
+        return rows[0];
       } catch (e) {
-        console.error('[MB API]', e);
+        console.error('[MB Proxy]', e);
         return null;
       }
     }
 
-    // Mantener loadMBCache para compatibilidad (ya no se usa en tiempo real)
+    // Mantener loadMBCache para compatibilidad
     async function loadMBCache() { return []; }
 
     async function autofill() {
