@@ -1806,6 +1806,39 @@
     const MB_URL = 'https://bia.metabaseapp.com/api/card/18922/query/json';
     let MB_KEY = localStorage.getItem('bia_mb_key') || '';
     let mbCache = null;
+
+    // ─── SUPABASE CONFIG ───
+    const SB_URL = 'https://ycbvwcjzgwfidyixtjrm.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljYnZ3Y2p6Z3dmaWR5aXh0anJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MzI5MzcsImV4cCI6MjA5NTUwODkzN30.n8m44g9hepXNotbEA8F8FVVWSrRPpsCVU4Ggta5Vfzo';
+
+    async function sbInsert(record) {
+      const res = await fetch(`${SB_URL}/rest/v1/pistoleos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SB_KEY,
+          'Authorization': `Bearer ${SB_KEY}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(record)
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Supabase error: ${err}`);
+      }
+      return true;
+    }
+
+    async function sbGetHistorial(limit = 100) {
+      const res = await fetch(`${SB_URL}/rest/v1/pistoleos?order=fecha.desc&limit=${limit}`, {
+        headers: {
+          'apikey': SB_KEY,
+          'Authorization': `Bearer ${SB_KEY}`
+        }
+      });
+      if (!res.ok) throw new Error('Error cargando historial');
+      return await res.json();
+    }
     let data = [], sortCol = null, sortDir = 1, activeSF = '', photoB64 = null, camStream = null, lastSync = null;
     let DEF_USERS = [{ user: 'admin', pass: 'bia2026', nombre: 'Administrador', bodega: 'Todas', role: 'admin', active: true }];
     let audit = JSON.parse(localStorage.getItem('bia_audit') || '[]');
@@ -2075,24 +2108,33 @@
       const fecha = new Date().toLocaleString('es-CO');
       const usuario = CU.nombre;
 
-      // Enviar a Google Sheets
+      // ─── Guardar en Supabase ───
       try {
-        fetch(API_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          body: JSON.stringify({ Serial: serial, Nombre: nombre, Status: status, Ubicacion: ubic, Estanteria: est, Fecha_pistoleo: fecha, Usuario: usuario })
-        }).catch(e => console.log('Sheets:', e));
-      } catch (e) { console.log('Error Sheets:', e); }
+        await sbInsert({
+          serial,
+          nombre,
+          status,
+          ubicacion: ubic,
+          estanteria: est,
+          foto_url: photoB64 || null,
+          usuario,
+          fecha: new Date().toISOString()
+        });
+        console.log('✅ Pistoleo guardado en Supabase');
+      } catch (e) {
+        console.error('❌ Error Supabase:', e);
+        toast('Error guardando en base de datos', 'e');
+      }
 
       const rec = { Serial: serial, Nombre: nombre, Status: status, Ubicacion: ubic, Estanteria: est, Foto: photoB64 ? '[foto]' : '', Fecha_pistoleo: fecha, Usuario: usuario };
 
       if (idx >= 0) data[idx] = rec; else data.unshift(rec);
 
-      // NUEVO: Guardar en la auditoría local (bia_audit)
+      // Guardar en auditoría local también
       const auditRecord = { serial, nombre, status, ubic, est, foto: photoB64, fecha, usuario };
       audit.unshift(auditRecord);
       localStorage.setItem('bia_audit', JSON.stringify(audit));
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise(r => setTimeout(r, 400));
       btn.disabled = false;
       btn.textContent = 'Guardar pistoleo';
       document.getElementById('saving').classList.remove('show');
