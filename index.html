@@ -1807,6 +1807,7 @@
     let MB_KEY = localStorage.getItem('bia_mb_key') || '';
     let mbCache = null;
     let data = [], sortCol = null, sortDir = 1, activeSF = '', photoB64 = null, camStream = null, lastSync = null;
+    let DEF_USERS = [{ user: 'admin', pass: 'bia2026', nombre: 'Administrador', bodega: 'Todas', role: 'admin', active: true }];
     let audit = JSON.parse(localStorage.getItem('bia_audit') || '[]');
 
     async function loadData() {
@@ -1922,8 +1923,8 @@
     // Mantener loadMBCache para compatibilidad
     async function loadMBCache() { return []; }
 
+    let _autofillTimer = null;
     async function autofill() {
-      // 1. Capturar el valor exacto del input del serial
       const s = document.getElementById('ps').value.trim();
 
       // Si el campo está vacío, ocultamos todo y salimos
@@ -1931,17 +1932,15 @@
         document.getElementById('dup-warn').style.display = 'none';
         document.getElementById('mb-panel').style.display = 'none';
         document.getElementById('mb-loading').style.display = 'none';
+        clearTimeout(_autofillTimer);
         return;
       }
 
-      // 2. Buscar el serial en los datos cargados del Sheet
+      // Buscar en datos del Sheet (instantáneo)
       const found = data.find(r => String(r.Serial) === s || String(r.serial) === s);
       if (found) {
-        // 3. Mostrar alerta visual de que ya existe
         document.getElementById('dup-warn').style.display = 'block';
-        // 4. Autocompletar el nombre
         document.getElementById('pn').value = found.Nombre || found.nombre || '';
-        // 5. Autocompletar status y ubicación (si es admin y si aplica)
         if (CU?.role === 'admin') {
           document.getElementById('pst').value = found.Status || found.estado || '';
           if (!document.getElementById('pub').value) {
@@ -1950,12 +1949,14 @@
         }
         document.getElementById('pest').value = found.Estanteria || found.estanteria || '';
       } else {
-        // Si no existe, ocultamos la alerta
         document.getElementById('dup-warn').style.display = 'none';
       }
 
-      // 6. Buscar el serial en Metabase y mostrar panel verde
-      await searchMetabase(s);
+      // Buscar en Metabase con debounce de 500ms
+      clearTimeout(_autofillTimer);
+      _autofillTimer = setTimeout(async () => {
+        await searchMetabase(s);
+      }, 500);
     }
 
     async function searchMetabase(serial) {
@@ -2021,7 +2022,8 @@
         v2.textContent = formatDate(vencCalib);
         v2.style.color = colorVenc(vencCalib);
 
-        document.getElementById('mb-panel').style.display = 'block';
+        const mbPanel = document.getElementById('mb-panel');
+        if (mbPanel) mbPanel.style.display = 'block';
 
         // Autocompletar nombre si está vacío
         if (!document.getElementById('pn').value && (sku !== '—')) {
