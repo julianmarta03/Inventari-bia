@@ -1551,6 +1551,23 @@
                 Sincronizar Google Sheets
               </button>
             </div>
+            <!-- API KEY METABASE -->
+            <div style="margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--b1)">
+              <div style="font-size:10px;color:var(--t3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">
+                🔑 API Key Metabase
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:6px">
+                <input type="password" id="mb-key-inp" class="mini" placeholder="mb_api_..."
+                  style="flex:1" value="">
+                <button onclick="saveMBKey()" class="addbtn">Guardar</button>
+              </div>
+              <div id="mb-key-status" style="font-size:10px;font-family:var(--mono);color:var(--t3)">
+                <!-- estado se actualiza dinámicamente -->
+              </div>
+              <div style="font-size:10px;color:var(--t3);font-family:var(--mono);margin-top:4px">
+                Se guarda solo en este dispositivo. No se sube a GitHub.
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1646,11 +1663,11 @@
 
   <script>
     // ─── USERS ───
-    const DEF_USERS = [
+   /* const DEF_USERS = [
       { user: 'admin', pass: 'Admin2024!', nombre: 'Administrador', bodega: 'Todas', role: 'admin' },
       { user: 'julian', pass: 'Bia2024', nombre: 'Julian Abelardo', bodega: 'Bia Barranquilla', role: 'operario' },
       { user: 'operario_bog', pass: 'Bog2024', nombre: 'Operario Bogotá', bodega: 'Bia Bogotá', role: 'operario' },
-    ];
+    ];*/
     // ─── USUARIOS: Sincronización con Google Sheets ───
     const getUsers = () => JSON.parse(localStorage.getItem('bia_users') || JSON.stringify(DEF_USERS));
 
@@ -1778,8 +1795,6 @@
       loadData();
       // Sincronizar usuarios desde Google Sheets
       syncUsers();
-      // Precargar Metabase en background
-      setTimeout(() => loadMBCache(), 2000);
     }
     const sess = sessionStorage.getItem('bia_s');
     if (sess) { CU = JSON.parse(sess); startApp(); }
@@ -1788,8 +1803,8 @@
     const SID = '1CGo7uEZCUVGieN8iDJ72EE4EUsVUcIZjOmcVUFMdXOQ';
     const API_URL = 'https://script.google.com/macros/s/AKfycbyp66mpZRU6cvw9kCZeG5JeThtpXrSnhxFIJE94i7adSGa1-XLnYkbdA6lkjxePxxG9_w/exec';
     const GV = `https://docs.google.com/spreadsheets/d/${SID}/gviz/tq?tqx=out:json&sheet=Hoja%201&headers=1`;
-    const MB_URL = 'https://bia.metabaseapp.com/api/card/18922/query';
-    const MB_STATIC = 'https://julianmarta03.github.io/Inventari-bia/mb-data.json'; // ← ACTUALIZADO: 10,189 equipos
+    const MB_URL = 'https://bia.metabaseapp.com/api/card/18922/query/json';
+    let MB_KEY = localStorage.getItem('bia_mb_key') || '';
     let mbCache = null;
     let data = [], sortCol = null, sortDir = 1, activeSF = '', photoB64 = null, camStream = null, lastSync = null;
     let audit = JSON.parse(localStorage.getItem('bia_audit') || '[]');
@@ -1884,43 +1899,43 @@
     }
 
     // ─── PISTOLEO ───
-    // ─── METABASE ───
-    async function loadMBCache() {
-      if (mbCache) return mbCache;
+    // ─── METABASE EN TIEMPO REAL ───
+    async function searchMetabaseAPI(serial) {
+      // Recargar key por si fue guardada recientemente
+      MB_KEY = localStorage.getItem('bia_mb_key') || '';
+      if (!MB_KEY) return null;
       try {
-        // Primero intenta cargar el archivo estático de GitHub
-        const res = await fetch(MB_STATIC);
-        if (res.ok) {
-          mbCache = await res.json();
-          console.log('MB cache cargado desde archivo:', mbCache.length, 'equipos');
-          return mbCache;
-        }
-      } catch (e) {
-        console.log('Archivo estático no disponible, intentando API...');
-      }
-      // Si falla, intenta la API de Metabase directamente
-      try {
-        mbCache = [];
         const res = await fetch(MB_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parameters: [] })
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': MB_KEY
+          },
+          body: JSON.stringify({
+            parameters: [
+              {
+                type: 'category',
+                target: ['variable', ['template-tag', 'serial']],
+                value: serial.trim()
+              }
+            ]
+          })
         });
-        const json = await res.json();
-        const cols = json.data?.cols?.map(c => c.name) || [];
-        const rows = json.data?.rows || [];
-        mbCache = rows.map(r => {
-          const obj = {};
-          cols.forEach((c, i) => obj[c] = r[i]);
-          return obj;
-        });
-        console.log('MB cache cargado desde API:', mbCache.length, 'equipos');
-        return mbCache;
+        if (!res.ok) {
+          console.warn('[MB API] Error:', res.status);
+          return null;
+        }
+        const rows = await res.json();
+        if (!Array.isArray(rows) || rows.length === 0) return null;
+        return rows[0]; // Retorna la primera fila
       } catch (e) {
-        console.log('MB no disponible:', e);
-        return [];
+        console.error('[MB API]', e);
+        return null;
       }
     }
+
+    // Mantener loadMBCache para compatibilidad (ya no se usa en tiempo real)
+    async function loadMBCache() { return []; }
 
     async function autofill() {
       // 1. Capturar el valor exacto del input del serial
@@ -1959,64 +1974,78 @@
     }
 
     async function searchMetabase(serial) {
-      // Ocultar panel mientras buscamos
       document.getElementById('mb-panel').style.display = 'none';
-
-      // Mostrar loading
       const loading = document.getElementById('mb-loading');
+
+      // Si no hay API Key configurada, no mostrar nada
+      MB_KEY = localStorage.getItem('bia_mb_key') || '';
+      if (!MB_KEY) {
+        loading.style.display = 'none';
+        return;
+      }
+
       loading.style.display = 'flex';
 
       try {
-        // Cargar cache de Metabase si no existe
-        const cache = await loadMBCache();
-
-        // Buscar el serial (normalizar comparando sin ceros a la izquierda)
-        const normalizeSerial = (s) => String(s).replace(/^0+/, '');
-        const mbData = cache.find(eq =>
-          normalizeSerial(eq.serial) === normalizeSerial(serial) ||
-          String(eq.serial) === serial
-        );
-
-        // Ocultar loading
+        const eq = await searchMetabaseAPI(serial);
         loading.style.display = 'none';
 
-        if (mbData) {
-          // Llenar los campos del panel
-          document.getElementById('mb-sku').textContent = mbData.sku || '—';
-          document.getElementById('mb-estado').textContent = mbData.estado || '—';
-          document.getElementById('mb-marca').textContent = mbData.marca || '—';
-          document.getElementById('mb-bia').textContent = mbData.bia_code || '—';
-          document.getElementById('mb-ubicacion').textContent = mbData.ubicacion || '—';
-
-          // Formatear fechas de vencimiento
-          const formatDate = (dateStr) => {
-            if (!dateStr || dateStr === '—') return '—';
-            try {
-              const date = new Date(dateStr);
-              return date.toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' });
-            } catch {
-              return dateStr;
-            }
-          };
-
-          document.getElementById('mb-venc1').textContent = formatDate(mbData.venc_conf);
-          document.getElementById('mb-venc2').textContent = formatDate(mbData.venc_calib);
-
-          // Mostrar el panel
-          document.getElementById('mb-panel').style.display = 'block';
-
-          // Auto-completar nombre desde Metabase si está vacío
-          if (!document.getElementById('pn').value && mbData.sku) {
-            document.getElementById('pn').value = mbData.sku;
-          }
-        } else {
-          // No se encontró en Metabase
+        if (!eq) {
           document.getElementById('mb-panel').style.display = 'none';
+          return;
         }
+
+        // Mapeo flexible de columnas (ajusta si los nombres difieren)
+        const sku       = eq['sku']       || eq['SKU']               || '—';
+        const estado    = eq['estado']    || eq['Estado']            || eq['Estado WMS'] || '—';
+        const marca     = eq['marca']     || eq['Marca']             || '—';
+        const biaCode   = eq['bia_code']  || eq['Código BIA']        || eq['BIA Code']   || '—';
+        const ubicacion = eq['ubicacion'] || eq['Ubicación']         || eq['Ubicación WMS'] || '—';
+        const vencConf  = eq['venc_conf'] || eq['Venc. Conformidad'] || eq['Conformidad'] || '—';
+        const vencCalib = eq['venc_calib']|| eq['Venc. Calibración'] || eq['Calibración'] || '—';
+
+        const formatDate = (d) => {
+          if (!d || d === '—') return '—';
+          try {
+            const f = new Date(d);
+            if (isNaN(f)) return d;
+            return f.toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' });
+          } catch { return d; }
+        };
+
+        const colorVenc = (d) => {
+          if (!d || d === '—') return 'var(--t2)';
+          try {
+            const dias = Math.floor((new Date(d) - new Date()) / 86400000);
+            if (dias < 0)  return 'var(--danger)';
+            if (dias <= 30) return 'var(--warn)';
+            return 'var(--accent)';
+          } catch { return 'var(--t2)'; }
+        };
+
+        document.getElementById('mb-sku').textContent       = sku;
+        document.getElementById('mb-estado').textContent    = estado;
+        document.getElementById('mb-marca').textContent     = marca;
+        document.getElementById('mb-bia').textContent       = biaCode;
+        document.getElementById('mb-ubicacion').textContent = ubicacion;
+
+        const v1 = document.getElementById('mb-venc1');
+        const v2 = document.getElementById('mb-venc2');
+        v1.textContent = formatDate(vencConf);
+        v1.style.color = colorVenc(vencConf);
+        v2.textContent = formatDate(vencCalib);
+        v2.style.color = colorVenc(vencCalib);
+
+        document.getElementById('mb-panel').style.display = 'block';
+
+        // Autocompletar nombre si está vacío
+        if (!document.getElementById('pn').value && (sku !== '—')) {
+          document.getElementById('pn').value = sku;
+        }
+
       } catch (e) {
-        console.error('Error buscando en Metabase:', e);
+        console.error('[searchMetabase]', e);
         loading.style.display = 'none';
-        document.getElementById('mb-panel').style.display = 'none';
       }
     }
 
@@ -2304,7 +2333,24 @@
       updateAdmin();
       toast('Usuario eliminado', 's');
     }
-    function updateAdmin() { renderUsers(); document.getElementById('admt').textContent = data.length.toLocaleString(); document.getElementById('admp').textContent = audit.length.toLocaleString(); document.getElementById('admu').textContent = getUsers().length; document.getElementById('adms').textContent = lastSync ? lastSync.toLocaleString('es-CO') : 'Sin sync'; }
+    function updateAdmin() { renderUsers(); document.getElementById('admt').textContent = data.length.toLocaleString(); document.getElementById('admp').textContent = audit.length.toLocaleString(); document.getElementById('admu').textContent = getUsers().length; document.getElementById('adms').textContent = lastSync ? lastSync.toLocaleString('es-CO') : 'Sin sync';
+      // Mostrar estado de API Key Metabase
+      const keyGuardada = localStorage.getItem('bia_mb_key') || '';
+      const statusEl = document.getElementById('mb-key-status');
+      if (statusEl) statusEl.textContent = keyGuardada ? '✅ API Key configurada en este dispositivo' : '⚠️ Sin API Key — el panel WMS no funcionará';
+      if (statusEl) statusEl.style.color = keyGuardada ? 'var(--accent)' : 'var(--warn)';
+    }
+
+    function saveMBKey() {
+      const k = document.getElementById('mb-key-inp').value.trim();
+      if (!k) { toast('Escribe la API Key primero', 'e'); return; }
+      localStorage.setItem('bia_mb_key', k);
+      MB_KEY = k;
+      document.getElementById('mb-key-inp').value = '';
+      document.getElementById('mb-key-status').textContent = '✅ API Key configurada en este dispositivo';
+      document.getElementById('mb-key-status').style.color = 'var(--accent)';
+      toast('✅ API Key de Metabase guardada', 's');
+    }
 
     // ─── EXPORT ───
     function exportCSV() {
