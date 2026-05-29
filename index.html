@@ -1288,7 +1288,6 @@
       <button class="ntab admin-only hidden" onclick="goTab('admin',this)">Admin</button>
       <button class="ntab admin-only hidden" onclick="goTab('inventarios',this)">Inventarios</button>
       <button class="ntab" onclick="goTab('about',this)">About</button>
-      <button class="ntab" onclick="goTab('vencidos',this)">Vencidos</button>
     </div>
 
     <div class="main">
@@ -1553,23 +1552,7 @@
                 Sincronizar Google Sheets
               </button>
             </div>
-            <!-- API KEY METABASE -->
-            <div style="margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--b1)">
-              <div style="font-size:10px;color:var(--t3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">
-                🔑 API Key Metabase
-              </div>
-              <div style="display:flex;gap:8px;margin-bottom:6px">
-                <input type="password" id="mb-key-inp" class="mini" placeholder="mb_api_..."
-                  style="flex:1" value="">
-                <button onclick="saveMBKey()" class="addbtn">Guardar</button>
-              </div>
-              <div id="mb-key-status" style="font-size:10px;font-family:var(--mono);color:var(--t3)">
-                <!-- estado se actualiza dinámicamente -->
-              </div>
-              <div style="font-size:10px;color:var(--t3);font-family:var(--mono);margin-top:4px">
-                Se guarda solo en este dispositivo. No se sube a GitHub.
-              </div>
-            </div>
+
           </div>
         </div>
       </div>
@@ -1653,12 +1636,6 @@
               Funciona en cualquier dispositivo.</div>
           </div>
         </div>
-      </div>
-
-      <!-- ===== VENCIDOS · módulo aislado en iframe (no toca CSS/JS de los demás módulos) ===== -->
-      <div id="tab-vencidos" style="display:none">
-        <iframe src="certcontrol.html" title="Módulo de Vencidos" loading="lazy"
-          style="width:100%;height:calc(100vh - 150px);min-height:560px;border:0;border-radius:14px;background:var(--bg)"></iframe>
       </div>
 
     </div>
@@ -1989,7 +1966,7 @@
         const res = await fetch('/api/metabase', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ serial: serial.trim(), apiKey: MB_KEY })
+          body: JSON.stringify({ serial: serial.trim() })
         });
         if (!res.ok) { console.warn('[MB Proxy] Error:', res.status); return null; }
         const rows = await res.json();
@@ -2439,7 +2416,7 @@
     // ─── TABS ───
     function goTab(tab, btn) {
       if ((tab === 'admin' || tab === 'inventarios') && CU?.role !== 'admin') { toast('No tienes permisos para acceder a esta sección', 'e'); return; }
-      ['conteo', 'pistoleo', 'admin', 'inventarios', 'about', 'vencidos'].forEach(t => {
+      ['conteo', 'pistoleo', 'admin', 'inventarios', 'about'].forEach(t => {
         const el = document.getElementById('tab-' + t);
         if (el) el.style.display = t === tab ? 'block' : 'none';
       });
