@@ -2175,6 +2175,7 @@
       <!-- ============================= RESUMEN ============================= -->
       <section id="sec-resumen" class="cc-sec" style="display:none">
         <div class="cc-grid k6" id="cc-kpis"></div>
+        <div id="cc-sinfecha" style="display:none;margin-bottom:1.5rem"></div>
         <div class="cc-grid k2">
           <div class="cc-card">
             <div class="ct"><span class="d" style="background:var(--warn)"></span>Semáforo de vencimientos</div>
@@ -2217,6 +2218,7 @@
           </div>
           <select class="fsel" id="cc-festado" onchange="ccRenderTabla()">
             <option value="__GEST__">Gestionables</option>
+            <option value="__SINFECHA__">Sin fecha (sin vencimiento)</option>
             <option value="">Todos los estados</option>
             <option>DISPONIBLE</option>
             <option>ASIGNADO</option>
@@ -2498,6 +2500,8 @@
 
     /* población gestionable (igual que "Equipos Vencidos") */
     const gestionables = () => ALL.filter(e => GEST.includes(e.estado) && !e._acc && e._d !== null);
+    /* equipos gestionables PERO sin fecha de vencimiento -> visibles, fuera del semáforo */
+    const sinFecha = () => ALL.filter(e => GEST.includes(e.estado) && !e._acc && e._d === null);
 
     /* ===================== RESUMEN ===================== */
     function ccResumen() {
@@ -2516,6 +2520,18 @@
         ['% al día', pct + '%', 'var(--accent)', 'vigentes / total']
       ];
       document.getElementById('cc-kpis').innerHTML = kpis.map(([l, v, c, m]) => `<div class="cc-kpi"><div class="strip" style="background:${c}"></div><div class="lbl">${l}</div><div class="val" style="color:${c}">${v}</div><div class="meta">${m}</div></div>`).join('');
+
+      // Banner de equipos sin fecha de vencimiento (visibles pero fuera del semáforo).
+      // Explica la diferencia entre el total de Metabase y el conteo de gestionables.
+      const sf = sinFecha(), sfEl = document.getElementById('cc-sinfecha');
+      if (sf.length) {
+        sfEl.style.display = 'block';
+        sfEl.innerHTML = `<div class="cc-card" style="border-color:rgba(251,191,36,.35);background:linear-gradient(135deg,var(--s1),rgba(251,191,36,.05));display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="font-size:26px;font-weight:800;color:var(--warn)">${sf.length.toLocaleString()}</div>
+          <div style="flex:1;min-width:220px;font-size:13px;color:var(--t2);line-height:1.55">equipos gestionables <b>sin fecha de vencimiento</b> (ni calibración ni conformidad). No entran al semáforo porque no se puede calcular su vencimiento — requieren cargar su certificación en Metabase.</div>
+          <button class="cc-btn" onclick="ccVerSinFecha()" style="white-space:nowrap">Ver equipos →</button>
+        </div>`;
+      } else { sfEl.style.display = 'none'; }
       document.getElementById('cc-heroring').innerHTML = ring(pct) + `<div><div class="big">${pct}%</div><div class="rl">Equipos al día (30+ días)</div></div>`;
 
       const cExp = venc, c020 = g.filter(e => e._d >= 0 && e._d <= 20).length, c2130 = g.filter(e => e._d > 20 && e._d <= 30).length, c30 = vig;
@@ -2606,6 +2622,7 @@
       return ALL.filter(e => {
         if (e._acc) return false;
         if (fe === '__GEST__') { if (!GEST.includes(e.estado)) return false; }
+        else if (fe === '__SINFECHA__') { if (!(GEST.includes(e.estado) && e._d == null)) return false; }
         else if (fe) { if (e.estado !== fe) return false; }
         if (fu && e.ubic !== fu) return false;
         if (fr && rKey(e._d) !== fr) return false;
@@ -2634,6 +2651,8 @@
       </tr>`).join('')}</tbody></table>`;
     }
     function ccClear() { ['cc-q', 'cc-fub', 'cc-frango', 'cc-fmarca', 'cc-ftipo', 'cc-fseg'].forEach(id => document.getElementById(id).value = ''); document.getElementById('cc-festado').value = '__GEST__'; ccSort = { key: 'dias', dir: 1 }; ccRenderTabla(); }
+    /* desde el Resumen: lista los equipos sin fecha en la pestaña Equipos */
+    function ccVerSinFecha() { ['cc-q', 'cc-fub', 'cc-frango', 'cc-fmarca', 'cc-ftipo', 'cc-fseg'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; }); document.getElementById('cc-festado').value = '__SINFECHA__'; ccSort = { key: 'dias', dir: 1 }; ccRenderTabla(); ccSec('equipos'); }
 
     /* ===================== GESTIÓN ===================== */
     let ccSel = null;
