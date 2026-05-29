@@ -1288,6 +1288,7 @@
       <button class="ntab admin-only hidden" onclick="goTab('admin',this)">Admin</button>
       <button class="ntab admin-only hidden" onclick="goTab('inventarios',this)">Inventarios</button>
       <button class="ntab" onclick="goTab('about',this)">About</button>
+      <button class="ntab" onclick="goTab('vencidos',this)">Vencidos</button>
     </div>
 
     <div class="main">
@@ -1638,6 +1639,12 @@
         </div>
       </div>
 
+      <!-- ===== VENCIDOS · módulo aislado en iframe (no toca CSS/JS de los demás módulos) ===== -->
+      <div id="tab-vencidos" style="display:none">
+        <iframe src="certcontrol.html" title="Módulo de Vencidos" loading="lazy"
+          style="width:100%;height:calc(100vh - 150px);min-height:560px;border:0;border-radius:14px;background:var(--bg)"></iframe>
+      </div>
+
     </div>
   </div>
   <!-- CHAT IA FLOTANTE -->
@@ -1960,8 +1967,8 @@
     // ─── PISTOLEO ───
     // ─── METABASE EN TIEMPO REAL (vía proxy Vercel) ───
     async function searchMetabaseAPI(serial) {
-      MB_KEY = localStorage.getItem('bia_mb_key') || '';
-      if (!MB_KEY) return null;
+      // La API key vive en el servidor (env var MB_API_KEY en Vercel); el
+      // navegador ya no la maneja.
       try {
         const res = await fetch('/api/metabase', {
           method: 'POST',
@@ -2020,13 +2027,6 @@
     async function searchMetabase(serial) {
       document.getElementById('mb-panel').style.display = 'none';
       const loading = document.getElementById('mb-loading');
-
-      // Si no hay API Key configurada, no mostrar nada
-      MB_KEY = localStorage.getItem('bia_mb_key') || '';
-      if (!MB_KEY) {
-        loading.style.display = 'none';
-        return;
-      }
 
       loading.style.display = 'flex';
 
@@ -2416,7 +2416,7 @@
     // ─── TABS ───
     function goTab(tab, btn) {
       if ((tab === 'admin' || tab === 'inventarios') && CU?.role !== 'admin') { toast('No tienes permisos para acceder a esta sección', 'e'); return; }
-      ['conteo', 'pistoleo', 'admin', 'inventarios', 'about'].forEach(t => {
+      ['conteo', 'pistoleo', 'admin', 'inventarios', 'about', 'vencidos'].forEach(t => {
         const el = document.getElementById('tab-' + t);
         if (el) el.style.display = t === tab ? 'block' : 'none';
       });
